@@ -6,14 +6,11 @@ import asyncio
 import io
 import os
 
-# ---------------- 設定項目 ----------------
-# Renderの環境変数から設定を読み込む
+# --- 設定項目（Renderの環境変数から読み込む） ---
 DISCORD_BOT_TOKEN = os.getenv('DISCORD_BOT_TOKEN')
-# チャンネルIDは環境変数から文字列として読み込まれるため、整数(int)に変換する
 TARGET_CHANNEL_ID_STR = os.getenv('TARGET_CHANNEL_ID')
 TARGET_CHANNEL_ID = int(TARGET_CHANNEL_ID_STR) if TARGET_CHANNEL_ID_STR else 0
-VOICEVOX_URL = os.getenv('VOICEVOX_URL', 'http://127.0.0.1:50021') # ローカルテスト用にデフォルト値を設定
-# ----------------------------------------
+VOICEVOX_URL = os.getenv('VOICEVOX_URL', 'http://127.0.0.1:50021')
 
 # --- グローバル変数 ---
 intents = discord.Intents.default()
@@ -21,18 +18,14 @@ intents.messages = True
 intents.message_content = True
 intents.guilds = True
 intents.voice_states = True
-
 client = discord.Client(intents=intents)
 tree = app_commands.CommandTree(client)
-
 voice_client = None
 message_queue = asyncio.Queue()
-
 user_speakers = {}
 DEFAULT_SPEAKER_ID = 14
-# --------------------
 
-# 音声合成を行う関数
+# --- 関数定義 ---
 async def synthesize_voice(text, speaker):
     try:
         query_params = {"text": text, "speaker": speaker}
@@ -53,16 +46,13 @@ async def synthesize_voice(text, speaker):
         print(f"!!! ERROR: VOICEVOX APIへの接続に失敗しました: {e}")
         return None
 
-# バックグラウンドで再生キューを処理し続ける関数
 async def audio_player_task():
     while True:
         author_id, line_to_speak = await message_queue.get()
-        
         if voice_client and voice_client.is_connected() and not voice_client.is_playing():
             speaker_id = user_speakers.get(author_id, DEFAULT_SPEAKER_ID)
             print(f"--> Reading (User: {author_id}, Speaker: {speaker_id}): {line_to_speak}")
             wav_data = await synthesize_voice(line_to_speak, speaker_id)
-            
             if wav_data:
                 temp_filename = f"_temp_{author_id}.wav"
                 try:
@@ -74,11 +64,9 @@ async def audio_player_task():
                     print(f"!!! ERROR: Failed to play audio: {e}")
                     if os.path.exists(temp_filename):
                         os.remove(temp_filename)
-        
         message_queue.task_done()
         await asyncio.sleep(0.1)
 
-# Botが起動したときの処理
 @client.event
 async def on_ready():
     print("--- Bot is ready! ---")
@@ -88,19 +76,16 @@ async def on_ready():
     print("--- Audio player task started ---")
     print("-----------------------\n")
 
-# メッセージが投稿されたときの処理
 @client.event
 async def on_message(message):
     global voice_client
-    if message.author.bot:
-        return
+    if message.author.bot: return
     if voice_client and voice_client.is_connected() and message.channel.id == TARGET_CHANNEL_ID:
         lines = message.content.split('\n')
         for line in lines:
             if line.strip():
                 await message_queue.put((message.author.id, line))
 
-# --- スラッシュコマンドの定義 ---
 @tree.command(name="join", description="Botがボイスチャンネルに参加し、読み上げを開始します。")
 async def join_command(interaction: discord.Interaction):
     global voice_client
@@ -133,15 +118,9 @@ async def set_speaker(interaction: discord.Interaction, id: int):
     await interaction.response.send_message(f"あなたの読み上げキャラクターをID: {id} に設定しました。", ephemeral=True)
     print(f"--- Speaker for {interaction.user.name} set to {id} ---")
 
-# Botの起動
+# --- Botの起動 ---
 if __name__ == '__main__':
-    # 環境変数からトークンが読み込めているかだけを確認する
     if not DISCORD_BOT_TOKEN:
         print("!!! FATAL ERROR: 環境変数 'DISCORD_BOT_TOKEN' が設定されていません！")
     else:
-        try:
-            client.run(DISCORD_BOT_TOKEN)
-        except discord.errors.LoginFailure:
-            print("!!! FATAL ERROR: トークンが間違っています。Renderの環境変数を確認してください。")
-        except Exception as e:
-            print(f"!!! FATAL ERROR: 予期せぬエラーでBotが停止しました: {e}")
+        client.run(DISCORD_BOT_TOKEN)
