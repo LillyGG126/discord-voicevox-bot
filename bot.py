@@ -140,33 +140,54 @@ async def on_message(message):
 @tree.command(name="join", description="Botがボイスチャンネルに参加し、読み上げを開始します。")
 async def join_command(interaction: discord.Interaction):
     global voice_client
+    
+    # 1. 応答を「遅延」させることで、操作タイムアウトエラーを防ぐ
+    await interaction.response.defer(ephemeral=True)
+
     if interaction.user.voice and interaction.user.voice.channel:
         channel = interaction.user.voice.channel
-        if voice_client and voice_client.is_connected():
-            await voice_client.move_to(channel)
-            await interaction.response.send_message(f"`{channel.name}` に移動しました。", ephemeral=True)
-        else:
-            voice_client = await channel.connect()
-            await interaction.response.send_message(f"`{channel.name}` に参加しました。読み上げを開始します。", ephemeral=True)
+        try:
+            if voice_client and voice_client.is_connected():
+                await voice_client.move_to(channel)
+                # 2. followup.sendで遅延させた応答を編集する
+                await interaction.followup.send(f"`{channel.name}` に移動しました。")
+            else:
+                # タイムアウト時間を30秒に延長して接続試行
+                voice_client = await channel.connect(timeout=30.0)
+                await interaction.followup.send(f"`{channel.name}` に参加しました。読み上げを開始します。")
+
+            # 3. 接続が安定するための短い待機時間
+            await asyncio.sleep(1) 
+
+        except asyncio.TimeoutError:
+            await interaction.followup.send("ボイスチャンネルへの接続がタイムアウトしました。サーバーが混み合っている可能性があります。")
+        except Exception as e:
+            await interaction.followup.send(f"エラーが発生しました: {e}")
     else:
-        await interaction.response.send_message("先にボイスチャンネルに入ってください。", ephemeral=True)
+        await interaction.followup.send("先にボイスチャンネルに入ってください。")
+
 
 @tree.command(name="leave", description="Botがボイスチャンネルから退出します。")
 async def leave_command(interaction: discord.Interaction):
     global voice_client
+    
+    # こちらも同様に応答を遅延させる
+    await interaction.response.defer(ephemeral=True)
+
     if voice_client and voice_client.is_connected():
         await voice_client.disconnect()
         voice_client = None
+        # キューをクリアする処理
         while not message_queue.empty():
             try:
                 message_queue.get_nowait()
                 message_queue.task_done()
             except asyncio.QueueEmpty:
                 break
-        await interaction.response.send_message("ボイスチャンネルから退出しました。", ephemeral=True)
+        await interaction.followup.send("ボイスチャンネルから退出しました。")
     else:
-        await interaction.response.send_message("Botはボイスチャンネルに参加していません。", ephemeral=True)
-
+        await interaction.followup.send("Botはボイスチャンネルに参加していません。")
+        
 @tree.command(name="speaker", description="読み上げキャラクターのIDを設定します。")
 @app_commands.describe(id="VOICEVOXのキャラクターID（数字）")
 async def set_speaker(interaction: discord.Interaction, id: int):
