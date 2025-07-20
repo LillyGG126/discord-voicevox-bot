@@ -25,6 +25,7 @@ RUN wget https://github.com/VOICEVOX/voicevox_engine/releases/download/0.24.1/vo
 COPY requirements.txt .
 COPY start.sh .
 COPY bot.py .
+COPY keep_alive.py .
 
 # 6. Pythonライブラリをインストール
 RUN pip install --no-cache-dir -r requirements.txt
