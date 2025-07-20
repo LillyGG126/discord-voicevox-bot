@@ -2,13 +2,12 @@
 # exit on error
 set -o errexit
 
-# 1. 必要なシステムパッケージをインストール
-apt-get update && apt-get install -y ffmpeg wget unzip
+# 1. 必要なシステムパッケージをインストール (updateなしで直接インストール)
+apt-get install -y wget unzip ffmpeg
 
-# 2. VOICEVOX Engineをダウンロードして展開
-# 注意: バージョンが更新された場合、このURLと下のディレクトリ名も変更が必要
-wget https://github.com/VOICEVOX/voicevox_engine/releases/download/0.16.1/voicevox_engine-linux-cpu-0.16.1.zip
-unzip voicevox_engine-linux-cpu-0.16.1.zip
+# 2. 最新版(0.19.4)のVOICEVOX Engineをダウンロードして展開
+wget https://github.com/VOICEVOX/voicevox_engine/releases/download/0.19.4/voicevox_engine-linux-cpu-0.19.4.zip
+unzip voicevox_engine-linux-cpu-0.19.4.zip
 
 # 3. Pythonライブラリをインストール
 pip install -r requirements.txt
