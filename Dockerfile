@@ -2,11 +2,12 @@
 FROM python:3.11-slim
 
 # 2. 管理者(root)権限でシステムパッケージをインストール
+# .7zファイルを解凍するために p7zip-full を追加
 USER root
 RUN apt-get update && apt-get install -y --no-install-recommends \
     wget \
-    unzip \
     ffmpeg \
+    p7zip-full \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
@@ -14,9 +15,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /app
 
 # 4. 最新版(0.24.1)のVOICEVOX Engineをダウンロードして展開
-RUN wget https://github.com/VOICEVOX/voicevox_engine/releases/download/0.24.1/voicevox_engine-linux-cpu-0.24.1.zip && \
-    unzip voicevox_engine-linux-cpu-0.24.1.zip && \
-    rm voicevox_engine-linux-cpu-0.24.1.zip
+# 正しいファイル名(.7z.001)を指定
+RUN wget https://github.com/VOICEVOX/voicevox_engine/releases/download/0.24.1/voicevox_engine-linux-cpu-x64-0.24.1.7z.001 && \
+    # 7zコマンドで解凍し、不要になった圧縮ファイルを削除
+    7z x voicevox_engine-linux-cpu-x64-0.24.1.7z.001 && \
+    rm voicevox_engine-linux-cpu-x64-0.24.1.7z.001
 
 # 5. 必要なプロジェクトファイルをコピー
 COPY requirements.txt .
