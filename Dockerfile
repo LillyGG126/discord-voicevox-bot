@@ -13,10 +13,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # 3. アプリケーション用のディレクトリを作成
 WORKDIR /app
 
-# 4. VOICEVOX Engineをダウンロードして展開
-RUN wget https://github.com/VOICEVOX/voicevox_engine/releases/download/0.19.4/voicevox_engine-linux-cpu-0.19.4.zip && \
-    unzip voicevox_engine-linux-cpu-0.19.4.zip && \
-    rm voicevox_engine-linux-cpu-0.19.4.zip
+# 4. 最新版(0.24.1)のVOICEVOX Engineをダウンロードして展開
+RUN wget https://github.com/VOICEVOX/voicevox_engine/releases/download/0.24.1/voicevox_engine-linux-cpu-0.24.1.zip && \
+    unzip voicevox_engine-linux-cpu-0.24.1.zip && \
+    rm voicevox_engine-linux-cpu-0.24.1.zip
 
 # 5. 必要なプロジェクトファイルをコピー
 COPY requirements.txt .
