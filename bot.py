@@ -68,35 +68,20 @@ async def synthesize_voice(text, speaker):
     wav_data = await loop.run_in_executor(None, func)
     return wav_data
 
-def after_playing(error, filename):
-    """再生終了後に呼ばれるコールバック関数"""
-    if error:
-        print(f'!!! ERROR after playing: {error}')
-    else:
-        print(f'--> Finished playing audio.')
-    
-    # ファイルが存在すれば削除
-    if os.path.exists(filename):
-        try:
-            os.remove(filename)
-            print(f'--> Deleted temp file: {filename}')
-        except Exception as e:
-            print(f'!!! ERROR deleting temp file {filename}: {e}')
 
-
+# audio_player_task関数を、以下のコードでまるごと置き換えてください
 async def audio_player_task():
     while True:
         author_id, line_to_speak = await message_queue.get()
         
         if not (voice_client and voice_client.is_connected()):
             print("--> Player waiting: Voice client not connected.")
-            await asyncio.sleep(1)
-            # 処理できなかったのでキューに戻す（場合によるが、今回はシンプルに破棄）
             message_queue.task_done()
             continue
 
+        # is_playingのチェックは、キューの設計上ここでは不要かもしれないが念のため残す
         while voice_client.is_playing():
-            await asyncio.sleep(0.2)
+            await asyncio.sleep(0.1)
 
         speaker_id = user_speakers.get(author_id, DEFAULT_SPEAKER_ID)
         print(f"--> Synthesizing (User: {author_id}, Speaker: {speaker_id}): '{line_to_speak}'")
@@ -106,23 +91,26 @@ async def audio_player_task():
         if wav_data:
             print(f"--> Synthesis complete. Received {len(wav_data)} bytes of audio data.")
             if voice_client and voice_client.is_connected():
-                temp_filename = f"_temp_{author_id}.wav"
                 try:
-                    with open(temp_filename, "wb") as f:
-                        f.write(wav_data)
+                    # 1. 一時ファイルの代わりにBytesIO（メモリ上のファイル）を使用
+                    audio_source = io.BytesIO(wav_data)
                     
-                    source = discord.FFmpegPCMAudio(temp_filename)
+                    # 2. BytesIOオブジェクトを直接FFmpegに渡す。pipe=Trueが重要。
+                    source = discord.FFmpegPCMAudio(audio_source, pipe=True)
                     
-                    # afterコールバックを正しく設定
-                    callback = functools.partial(after_playing, filename=temp_filename)
-                    print(f"--> Playing audio from {temp_filename}...")
-                    voice_client.play(source, after=callback)
+                    # 3. 再生後のコールバックを定義（ファイル削除は不要）
+                    def after_playing_callback(error):
+                        if error:
+                            print(f'!!! ERROR after playing: {error}')
+                        else:
+                            print(f'--> Finished playing audio.')
+
+                    print("--> Playing audio from memory...")
+                    voice_client.play(source, after=after_playing_callback)
 
                 except Exception as e:
                     print(f"!!! ERROR: Failed to play audio: {e}")
                     traceback.print_exc() # エラーの詳細を表示
-                    if os.path.exists(temp_filename):
-                        os.remove(temp_filename)
             else:
                 print("--> Skipped playing: Voice client disconnected during synthesis.")
         else:
