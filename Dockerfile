@@ -1,5 +1,5 @@
 # 1. ベースとなる公式Pythonイメージを指定
-FROM python:3.11-slim
+FROM python:3.13-slim
 
 # 2. 管理者(root)権限でシステムパッケージをインストール
 # .7zファイルを解凍するために p7zip-full を追加
