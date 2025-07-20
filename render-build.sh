@@ -2,6 +2,7 @@
 # exit on error
 set -o errexit
 
-pip install -r requirements.txt
+# apt-get updateを削除し、installのみ実行
+apt-get install -y ffmpeg
 
-apt-get update && apt-get install -y ffmpeg
+pip install -r requirements.txt
